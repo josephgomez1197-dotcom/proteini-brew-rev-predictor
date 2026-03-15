@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proteini Brew — Revenue Predictor</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;0,800;1,700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold:        #C9A84C;
+  --gold-bright: #F0C84A;
+  --gold-dim:    #8A6820;
+  --page-bg:     #F5F3EF;
+  --surface:     #FFFFFF;
+  --surface-2:   #F9F8F5;
+  --border:      #E4E0D8;
+  --border-2:    #CEC9BE;
+  --text-1:      #141210;
+  --text-2:      #524E47;
+  --text-3:      #9C9890;
+  --green:       #1E6641;
+  --green-bg:    #E6F4EC;
+  --green-hi:    #D0EDD9;
+  --green-text:  #14472C;
+  --red:         #8B2828;
+  --red-bg:      #FAEAEA;
+  --red-text:    #6B1A1A;
+  --amber:       #8A5E0A;
+  --amber-bg:    #FEF2DC;
+}
+
+html { font-size: 15px; }
+body {
+  background: var(--page-bg);
+  color: var(--text-1);
+  font-family: 'Barlow', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px 24px 72px;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.wordmark {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 3px;
+}
+.header-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 32px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  line-height: 1;
+}
+.header-title em {
+  font-style: italic;
+  color: var(--gold);
+}
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green-text);
+  background: var(--green-bg);
+  border: 1px solid rgba(30,102,65,0.2);
+  padding: 5px 14px;
+  border-radius: 2px;
+}
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0.25} }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ══════════════════════════════════════════
+   GAMIFIED SLIDER STRIP
+══════════════════════════════════════════ */
+.slider-strip {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  margin-bottom: 28px;
+  background: #1A1714;
+  border: 2px solid #1A1714;
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 3px;
+}
+
+.slider-cell {
+  background: #1E1B17;
+  border-radius: 7px;
+  padding: 14px 14px 12px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  border: 1px solid #2E2A24;
+}
+.slider-cell::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #C9A84C 0%, #F0C84A 50%, #C9A84C 100%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.slider-cell.active::before,
+.slider-cell:hover::before { opacity: 1; }
+.slider-cell:hover { background: #252119; }
+.slider-cell.active { background: #252119; border-color: rgba(201,168,76,0.35); }
+
+/* Subtle noise texture via repeating-gradient */
+.slider-cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(255,255,255,0.012) 3px,
+    rgba(255,255,255,0.012) 4px
+  );
+  pointer-events: none;
+}
+
+.slider-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 4px;
+}
+.slider-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7A7268;
+  line-height: 1.3;
+}
+.slider-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--gold-bright);
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(240,200,74,0.4);
+  transition: text-shadow 0.15s;
+}
+.slider-cell.active .slider-val,
+.slider-cell:hover .slider-val {
+  text-shadow: 0 0 24px rgba(240,200,74,0.7);
+}
+.slider-hint {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #4A4640;
+  margin-top: 6px;
+}
+
+/* Custom range — dark arcade style */
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #3A3530;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #3A3530;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  border: 2px solid #1E1B17;
+  box-shadow: 0 0 10px rgba(240,200,74,0.6), 0 0 20px rgba(240,200,74,0.3);
+  margin-top: -7px;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 14px rgba(240,200,74,0.9), 0 0 28px rgba(240,200,74,0.5);
+  transform: scale(1.15);
+}
+input[type=range]:active::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 0 18px rgba(240,200,74,1), 0 0 36px rgba(240,200,74,0.6);
+}
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: #3A3530; }
+input[type=range]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  border: 2px solid #1E1B17;
+  box-shadow: 0 0 10px rgba(240,200,74,0.6);
+}
+
+/* min/max labels */
+.slider-range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.slider-range-labels span {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  color: #3A3530;
+  letter-spacing: 0.04em;
+}
+
+/* ── HERO METRIC TILES ── */
+.hero-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hero-metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 20px 18px;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.hero-metric:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.09);
+  border-color: var(--border-2);
+}
+.hero-metric::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.hero-metric.c-gold::before   { background: var(--gold); }
+.hero-metric.c-green::before  { background: var(--green); }
+.hero-metric.c-red::before    { background: var(--red); }
+.hero-metric.c-neutral::before{ background: var(--border-2); }
+
+/* EBITDA green highlight */
+.hero-metric.ebitda-positive {
+  background: var(--green-hi);
+  border-color: rgba(30,102,65,0.2);
+}
+.hero-metric.ebitda-negative {
+  background: var(--red-bg);
+  border-color: rgba(139,40,40,0.15);
+}
+
+.hm-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+.hm-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+}
+.hm-val.gold  { color: var(--gold); }
+.hm-val.green { color: var(--green); }
+.hm-val.red   { color: var(--red); }
+.hm-sub {
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* ── SEC METRICS ── */
+.sec-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 28px;
+}
+.sec-metric {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px 16px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.sec-metric:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 16px rgba(0,0,0,0.07);
+}
+.sm-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 3px;
+}
+.sm-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--text-1);
+  letter-spacing: -0.01em;
+}
+.sm-val.green { color: var(--green); }
+.sm-val.red   { color: var(--red); }
+.sm-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+/* ── TWO COL ── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px 20px 18px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+}
+.card-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 16px;
+}
+
+/* ── WATERFALL ── */
+.wf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+.wf-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--text-2);
+  width: 108px;
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+.wf-track {
+  flex: 1; height: 22px;
+  background: var(--surface-2);
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.wf-fill {
+  height: 100%; border-radius: 2px;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 600;
+  transition: width 0.3s ease; min-width: 4px; white-space: nowrap;
+}
+.wf-amt {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 12px;
+  width: 70px; text-align: right; flex-shrink: 0;
+}
+.wf-divider { height: 1px; background: var(--border); margin: 7px 0; }
+
+/* ── HEALTH BAR ── */
+.health-track {
+  height: 6px; display: flex; gap: 2px;
+  border-radius: 4px; overflow: hidden;
+  background: var(--border); margin-bottom: 11px;
+}
+.health-seg { height: 100%; transition: width 0.3s ease; }
+.health-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.hl-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); }
+.hl-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── SIGNAL ROWS ── */
+.signal-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 12px; border-radius: 5px; margin-bottom: 5px;
+}
+.signal-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600; font-size: 12px;
+  letter-spacing: 0.03em; color: var(--text-2);
+}
+.signal-right { display: flex; align-items: baseline; gap: 7px; }
+.signal-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; font-size: 17px;
+}
+.signal-note { font-size: 11px; color: var(--text-3); }
+
+/* ── INSIGHT GRID ── */
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.insight-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.insight-cell:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+}
+.ic-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: 5px;
+}
+.ic-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; font-size: 26px;
+  line-height: 1.1; margin-bottom: 4px;
+  color: var(--text-1); letter-spacing: -0.01em;
+}
+.ic-desc { font-size: 11px; color: var(--text-3); line-height: 1.5; }
+
+.rating {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 3px;
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  vertical-align: middle; margin-left: 4px;
+}
+.rating.strong,.rating.healthy,.rating.excellent,.rating.good { background:var(--green-bg); color:var(--green-text); }
+.rating.ok,.rating.marginal { background:var(--amber-bg); color:var(--amber); }
+.rating.danger,.rating.long { background:var(--red-bg); color:var(--red-text); }
+
+/* ── CHART ── */
+.chart-wrap { position: relative; width: 100%; height: 260px; }
+.chart-legend { display: flex; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.cl-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.cl-swatch { width: 18px; height: 3px; border-radius: 2px; }
+
+/* ── FOOTER ── */
+.footer {
+  margin-top: 48px; padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer-brand {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; font-size: 14px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.footer-note { font-size: 11px; color: var(--text-3); }
+
+@media (max-width: 1100px) { .slider-strip { grid-template-columns: repeat(4,1fr); } }
+@media (max-width: 700px) {
+  .slider-strip { grid-template-columns: repeat(2,1fr); }
+  .hero-row,.sec-row,.insight-grid { grid-template-columns: repeat(2,1fr); }
+  .two-col { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div>
+      <div class="wordmark">Proteini Brew</div>
+      <h1 class="header-title">Subscription <em>Revenue</em> Predictor</h1>
+    </div>
+    <span class="live-badge"><span class="live-dot"></span>Live model</span>
+  </header>
+
+  <div class="section-label">Inputs — drag to adjust</div>
+  <div class="slider-strip" id="slider-strip">
+
+    <div class="slider-cell" id="cell-subs">
+      <div class="slider-top">
+        <span class="slider-name">Active<br>Subscribers</span>
+        <span class="slider-val" id="out-subs">5,000</span>
+      </div>
+      <input type="range" id="sl-subs" min="100" max="100000" value="5000" step="100" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>100</span><span>100K</span></div>
+      <div class="slider-hint">paying customers</div>
+    </div>
+
+    <div class="slider-cell" id="cell-price">
+      <div class="slider-top">
+        <span class="slider-name">Price<br>/ Sub / Mo</span>
+        <span class="slider-val" id="out-price">$69</span>
+      </div>
+      <input type="range" id="sl-price" min="39" max="149" value="69" step="1" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>$39</span><span>$149</span></div>
+      <div class="slider-hint">monthly charge</div>
+    </div>
+
+    <div class="slider-cell" id="cell-cogs">
+      <div class="slider-top">
+        <span class="slider-name">COGS<br>/ Sub / Mo</span>
+        <span class="slider-val" id="out-cogs">$18</span>
+      </div>
+      <input type="range" id="sl-cogs" min="5" max="60" value="18" step="1" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>$5</span><span>$60</span></div>
+      <div class="slider-hint">product + fulfillment</div>
+    </div>
+
+    <div class="slider-cell" id="cell-cac">
+      <div class="slider-top">
+        <span class="slider-name">CAC<br>Blended</span>
+        <span class="slider-val" id="out-cac">$45</span>
+      </div>
+      <input type="range" id="sl-cac" min="10" max="200" value="45" step="1" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>$10</span><span>$200</span></div>
+      <div class="slider-hint">cost to acquire</div>
+    </div>
+
+    <div class="slider-cell" id="cell-churn">
+      <div class="slider-top">
+        <span class="slider-name">Monthly<br>Churn</span>
+        <span class="slider-val" id="out-churn">8%</span>
+      </div>
+      <input type="range" id="sl-churn" min="1" max="30" value="8" step="0.5" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>1%</span><span>30%</span></div>
+      <div class="slider-hint">% cancel / month</div>
+    </div>
+
+    <div class="slider-cell" id="cell-opex">
+      <div class="slider-top">
+        <span class="slider-name">Monthly<br>Opex</span>
+        <span class="slider-val" id="out-opex">$15K</span>
+      </div>
+      <input type="range" id="sl-opex" min="0" max="200000" value="15000" step="1000" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>$0</span><span>$200K</span></div>
+      <div class="slider-hint">team + software + ops</div>
+    </div>
+
+    <div class="slider-cell" id="cell-adspend">
+      <div class="slider-top">
+        <span class="slider-name">Monthly<br>Ad Spend</span>
+        <span class="slider-val" id="out-adspend">$50K</span>
+      </div>
+      <input type="range" id="sl-adspend" min="0" max="1000000" value="50000" step="1000" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>$0</span><span>$1M</span></div>
+      <div class="slider-hint">total paid media</div>
+    </div>
+
+    <div class="slider-cell" id="cell-life">
+      <div class="slider-top">
+        <span class="slider-name">Sub<br>Lifespan</span>
+        <span class="slider-val" id="out-life">12mo</span>
+      </div>
+      <input type="range" id="sl-life" min="1" max="36" value="12" step="1" oninput="update();setActive(this)">
+      <div class="slider-range-labels"><span>1mo</span><span>36mo</span></div>
+      <div class="slider-hint">avg before cancel</div>
+    </div>
+
+  </div>
+
+  <div class="section-label">Monthly P&amp;L snapshot</div>
+  <div class="hero-row" id="hero-row"></div>
+  <div class="sec-row" id="sec-row"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Revenue breakdown</div>
+      <div id="waterfall"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Cost allocation</div>
+      <div class="health-track" id="health-track"></div>
+      <div class="health-legend" id="health-legend"></div>
+      <div class="card-title" style="margin-top:4px;">Health signals</div>
+      <div id="signals"></div>
+    </div>
+  </div>
+
+  <div class="section-label">Unit economics</div>
+  <div class="insight-grid" id="insights"></div>
+
+  <div class="card">
+    <div class="card-title">Net profit at scale — subscriber count</div>
+    <div class="chart-legend" id="chart-legend"></div>
+    <div class="chart-wrap"><canvas id="profitChart"></canvas></div>
+  </div>
+
+  <footer class="footer">
+    <span class="footer-brand">Proteini Brew</span>
+    <span class="footer-note">Projections are estimates. Actual results will vary.</span>
+  </footer>
+
+</div>
+<script>
+let profitChart;
+const $ = id => document.getElementById(id);
+
+function setActive(input) {
+  document.querySelectorAll('.slider-cell').forEach(c => c.classList.remove('active'));
+  input.closest('.slider-cell').classList.add('active');
+}
+
+function fmtD(n) {
+  const a = Math.abs(Math.round(n));
+  const s = a>=1000000?'$'+(a/1000000).toFixed(2)+'M':a>=1000?'$'+(a/1000).toFixed(1)+'K':'$'+a.toLocaleString();
+  return n<0?'-'+s:s;
+}
+function fmtFull(n) {
+  const a = Math.abs(Math.round(n));
+  return (n<0?'-$':'$')+a.toLocaleString();
+}
+function fmtP(n) { return (Math.round(n*10)/10)+'%'; }
+
+function calc(subs,price,cogs,cac,churnPct,opex,adSpend,life) {
+  const churn=churnPct/100, mrr=subs*price, totalCogs=subs*cogs;
+  const grossProfit=mrr-totalCogs, grossMargin=mrr>0?(grossProfit/mrr)*100:0;
+  const newSubs=cac>0?adSpend/cac:0, churned=subs*churn, netSubChg=newSubs-churned;
+  const totalOpex=opex+adSpend, ebitda=grossProfit-totalOpex, ebitdaM=mrr>0?(ebitda/mrr)*100:0;
+  const ltvGross=(price-cogs)*life, ltv=ltvGross-cac, ltvCac=cac>0?ltvGross/cac:0;
+  const payback=(price-cogs)>0?cac/(price-cogs):Infinity;
+  const breakEven=(price-cogs)>0?(opex+adSpend)/(price-cogs):Infinity;
+  return {mrr,totalCogs,grossProfit,grossMargin,newSubs,churned,netSubChg,totalOpex,ebitda,ebitdaM,ltv,ltvCac,payback,breakEven};
+}
+
+function update() {
+  const subs=parseInt($('sl-subs').value), price=parseInt($('sl-price').value);
+  const cogs=parseInt($('sl-cogs').value), cac=parseInt($('sl-cac').value);
+  const churn=parseFloat($('sl-churn').value), opex=parseInt($('sl-opex').value);
+  const adSpend=parseInt($('sl-adspend').value), life=parseInt($('sl-life').value);
+
+  $('out-subs').textContent=subs.toLocaleString();
+  $('out-price').textContent='$'+price;
+  $('out-cogs').textContent='$'+cogs;
+  $('out-cac').textContent='$'+cac;
+  $('out-churn').textContent=churn+'%';
+  $('out-opex').textContent=fmtD(opex);
+  $('out-adspend').textContent=fmtD(adSpend);
+  $('out-life').textContent=life+'mo';
+
+  const r=calc(subs,price,cogs,cac,churn,opex,adSpend,life);
+  const pos=r.ebitda>=0;
+
+  $('hero-row').innerHTML=`
+    <div class="hero-metric c-gold">
+      <div class="hm-label">MRR</div>
+      <div class="hm-val gold">${fmtD(r.mrr)}</div>
+      <div class="hm-sub">monthly recurring revenue</div>
+    </div>
+    <div class="hero-metric c-neutral">
+      <div class="hm-label">Gross profit</div>
+      <div class="hm-val">${fmtD(r.grossProfit)}</div>
+      <div class="hm-sub">${fmtP(r.grossMargin)} margin</div>
+    </div>
+    <div class="hero-metric c-neutral">
+      <div class="hm-label">Annual run rate</div>
+      <div class="hm-val">${fmtD(r.mrr*12)}</div>
+      <div class="hm-sub">ARR projection</div>
+    </div>
+    <div class="hero-metric ${pos?'c-green ebitda-positive':'c-red ebitda-negative'}">
+      <div class="hm-label">Net profit / EBITDA</div>
+      <div class="hm-val ${pos?'green':'red'}">${fmtD(r.ebitda)}</div>
+      <div class="hm-sub">${fmtP(r.ebitdaM)} margin</div>
+    </div>
+  `;
+
+  $('sec-row').innerHTML=`
+    <div class="sec-metric"><div class="sm-label">New subs this month</div><div class="sm-val">${Math.round(r.newSubs).toLocaleString()}</div><div class="sm-sub">from ad spend at $${cac} CAC</div></div>
+    <div class="sec-metric"><div class="sm-label">Churned this month</div><div class="sm-val red">${Math.round(r.churned).toLocaleString()}</div><div class="sm-sub">at ${churn}% monthly churn</div></div>
+    <div class="sec-metric"><div class="sm-label">Net subscriber change</div><div class="sm-val ${r.netSubChg>=0?'green':'red'}">${r.netSubChg>=0?'+':''}${Math.round(r.netSubChg).toLocaleString()}</div><div class="sm-sub">${r.netSubChg>=0?'base growing':'base shrinking'}</div></div>
+    <div class="sec-metric"><div class="sm-label">Total monthly costs</div><div class="sm-val">${fmtD(r.totalCogs+r.totalOpex)}</div><div class="sm-sub">COGS + opex + ads</div></div>
+  `;
+
+  const max=r.mrr||1;
+  const wfItems=[
+    {name:'MRR',val:r.mrr,fb:'#D4EDDF',ft:'#1E4D34'},
+    {name:'COGS',val:-r.totalCogs,fb:'#FAD9D9',ft:'#6B1F1F'},
+    {name:'Gross profit',val:r.grossProfit,fb:'#D6E8F7',ft:'#0D3D6B',div:false},
+    {name:'Ad spend',val:-adSpend,fb:'#FDEBD5',ft:'#7A3D0A'},
+    {name:'Opex',val:-opex,fb:'#EEECEA',ft:'#4A4640'},
+    {name:'Net profit',val:r.ebitda,fb:r.ebitda>=0?'#C4E8D3':'#FAD9D9',ft:r.ebitda>=0?'#1E4D34':'#6B1F1F',div:true},
+  ];
+  $('waterfall').innerHTML=wfItems.map(w=>{
+    const pct=Math.min(100,Math.abs(w.val)/max*100);
+    const show=pct>14;
+    const aC=w.val>=0?'var(--green)':'var(--red)';
+    const d=w.div?'<div class="wf-divider"></div>':'';
+    return `${d}<div class="wf-row"><span class="wf-name">${w.name}</span><div class="wf-track"><div class="wf-fill" style="width:${Math.max(pct,0.4)}%;background:${w.fb};">${show?`<span style="color:${w.ft}">${fmtD(w.val)}</span>`:''}</div></div><span class="wf-amt" style="color:${aC}">${fmtD(w.val)}</span></div>`;
+  }).join('');
+
+  const cP=max>0?r.totalCogs/max*100:0, aP=max>0?adSpend/max*100:0;
+  const oP=max>0?opex/max*100:0, pP=max>0?Math.max(0,r.ebitda/max*100):0;
+  $('health-track').innerHTML=`
+    <div class="health-seg" style="width:${cP}%;background:#E07070;"></div>
+    <div class="health-seg" style="width:${aP}%;background:#E09A50;"></div>
+    <div class="health-seg" style="width:${oP}%;background:#BBBBBB;"></div>
+    <div class="health-seg" style="width:${pP}%;background:#5AAB80;"></div>
+  `;
+  $('health-legend').innerHTML=`
+    <div class="hl-item"><span class="hl-dot" style="background:#E07070;"></span>COGS ${fmtP(cP)}</div>
+    <div class="hl-item"><span class="hl-dot" style="background:#E09A50;"></span>Ads ${fmtP(aP)}</div>
+    <div class="hl-item"><span class="hl-dot" style="background:#BBBBBB;"></span>Opex ${fmtP(oP)}</div>
+    <div class="hl-item"><span class="hl-dot" style="background:#5AAB80;"></span>Profit ${fmtP(pP)}</div>
+  `;
+
+  const sigs=[
+    {label:'Gross margin',val:fmtP(r.grossMargin),note:'target 60%+',good:r.grossMargin>=60,warn:r.grossMargin>=45},
+    {label:'EBITDA margin',val:fmtP(r.ebitdaM),note:'target 20%+',good:r.ebitdaM>=20,warn:r.ebitdaM>=0},
+    {label:'Subscriber growth',val:(r.netSubChg>=0?'+':'')+Math.round(r.netSubChg).toLocaleString(),note:'net new / mo',good:r.netSubChg>0,warn:r.netSubChg===0},
+  ];
+  $('signals').innerHTML=sigs.map(s=>{
+    const bg=s.good?'var(--green-bg)':s.warn?'var(--amber-bg)':'var(--red-bg)';
+    const col=s.good?'var(--green)':s.warn?'var(--amber)':'var(--red)';
+    return `<div class="signal-row" style="background:${bg}"><span class="signal-label">${s.label}</span><div class="signal-right"><span class="signal-val" style="color:${col}">${s.val}</span><span class="signal-note">${s.note}</span></div></div>`;
+  }).join('');
+
+  const lC=r.ltvCac>=5?'strong':r.ltvCac>=3?'healthy':r.ltvCac>=1.5?'marginal':'danger';
+  const lR=r.ltvCac>=5?'Strong':r.ltvCac>=3?'Healthy':r.ltvCac>=1.5?'Marginal':'Danger';
+  const lCol=r.ltvCac>=3?'var(--green)':r.ltvCac>=1.5?'var(--amber)':'var(--red)';
+  const pC=r.payback<=3?'excellent':r.payback<=6?'good':r.payback<=12?'ok':'long';
+  const pR=r.payback<=3?'Excellent':r.payback<=6?'Good':r.payback<=12?'OK':'Long';
+  const pCol=r.payback<=6?'var(--green)':r.payback<=12?'var(--amber)':'var(--red)';
+  const pD=r.payback===Infinity?'∞':(Math.round(r.payback*10)/10)+' mo';
+  const bD=r.breakEven===Infinity?'∞':Math.round(r.breakEven).toLocaleString();
+
+  $('insights').innerHTML=`
+    <div class="insight-cell"><div class="ic-label">LTV per subscriber</div><div class="ic-val" style="color:var(--gold)">${fmtFull(r.ltv)}</div><div class="ic-desc">over ${life}-month lifespan, net of COGS + CAC</div></div>
+    <div class="insight-cell"><div class="ic-label">LTV : CAC ratio</div><div class="ic-val" style="color:${lCol}">${Math.round(r.ltvCac*10)/10}x <span class="rating ${lC}">${lR}</span></div><div class="ic-desc">target 5x+. Under 3x = fix retention before scaling</div></div>
+    <div class="insight-cell"><div class="ic-label">CAC payback period</div><div class="ic-val" style="color:${pCol}">${pD} <span class="rating ${pC}">${pR}</span></div><div class="ic-desc">months to recover acquisition cost</div></div>
+    <div class="insight-cell"><div class="ic-label">Break-even subscribers</div><div class="ic-val">${bD}</div><div class="ic-desc">min subs to cover all fixed costs</div></div>
+  `;
+
+  updateChart(price,cogs,cac,churn,opex,adSpend,life);
+}
+
+function updateChart(price,cogs,cac,churn,opex,adSpend,life) {
+  const pts=[500,1000,2500,5000,10000,20000,35000,50000,75000,100000];
+  const labels=pts.map(s=>s>=1000?(s/1000)+'K':s);
+  $('chart-legend').innerHTML=`
+    <div class="cl-item"><span class="cl-swatch" style="background:#5AAB80;"></span>MRR</div>
+    <div class="cl-item"><span class="cl-swatch" style="background:#5A8FCC;"></span>Gross profit</div>
+    <div class="cl-item"><span class="cl-swatch" style="background:#C9A84C;"></span>Net profit</div>
+  `;
+  if(profitChart) profitChart.destroy();
+  profitChart=new Chart($('profitChart'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'MRR',data:pts.map(s=>s*price),borderColor:'#5AAB80',backgroundColor:'rgba(90,171,128,0.08)',fill:true,tension:0.35,borderWidth:2,pointRadius:3,pointBackgroundColor:'#5AAB80'},
+      {label:'Gross profit',data:pts.map(s=>calc(s,price,cogs,cac,churn,opex,adSpend,life).grossProfit),borderColor:'#5A8FCC',backgroundColor:'rgba(90,143,204,0.08)',fill:true,tension:0.35,borderWidth:2,pointRadius:3,pointBackgroundColor:'#5A8FCC'},
+      {label:'Net profit',data:pts.map(s=>calc(s,price,cogs,cac,churn,opex,adSpend,life).ebitda),borderColor:'#C9A84C',backgroundColor:'rgba(201,168,76,0.08)',fill:true,tension:0.35,borderWidth:2.5,pointRadius:3,pointBackgroundColor:'#C9A84C'},
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9C9890',font:{size:11,family:'Barlow'}}},
+        y:{grid:{color:'rgba(0,0,0,0.04)'},ticks:{color:'#9C9890',font:{size:11,family:'Barlow'},
+          callback:v=>{const a=Math.abs(v);const s=a>=1000000?'$'+(a/1000000).toFixed(1)+'M':a>=1000?'$'+Math.round(a/1000)+'K':'$'+a;return v<0?'-'+s:s;}
+        }}
+      }
+    }
+  });
+}
+
+update();
+</script>
+</body>
+</html>
